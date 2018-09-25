@@ -92,11 +92,13 @@ class Gallery(object):
         self.dpi = dpi
         self.conv = Converter()
         self.label=label
+        self.n_photos_on_page = 0
 
 
     def place_rect(self, w, h):
         x = self.pos[0]
         y = self.pos[1]
+        self.n_photos_on_page += 1
         if x+w > self.max_pos[0]:
             sys.stderr.write("New line\n")
             x = self.pdf.l_margin
@@ -105,6 +107,7 @@ class Gallery(object):
             sys.stderr.write("New page\n")
             self.pdf.add_page()
             y = self.pdf.t_margin
+            self.n_photos_on_page = 0
         self.pos = [x+w+self.marg,y]
         return x,y
 
@@ -135,7 +138,15 @@ class Gallery(object):
         if self.label:
             self.pdf.text(x=x,y=y+h+self.text_h,txt=name)
 
-    def generate_tree(self, path, extensions=['png','jpg']):
+    def new_page(self):
+        if self.n_photos_on_page > 0:
+            #self.pdf.add_page()
+            self.pos = [ii for ii in self.max_pos]
+        # self.pos = [self.pdf.l_margin,
+        #            self.pdf.t_margin]
+        return
+
+    def generate_tree(self, path, extensions=['png','jpg'], dir_break=False):
         pdf = self.pdf
         pdf.add_page()
         for root, dirs, files in os.walk(path):
@@ -148,6 +159,8 @@ class Gallery(object):
                     self.add_picture_from_file(file,dpi=self.dpi)
                 else:
                     sys.stderr.write("skipping %s\n"%filename)
+            if dir_break:
+                self.new_page()
         if not self.output_file:
             basename = os.path.split(path)[-1]
             output_file = basename+'.pdf'
@@ -156,13 +169,13 @@ class Gallery(object):
         pdf.output(output_file,'F')
         self.conv.cleanup()
 
-def generate_gallery(path,with_label=False, height=0.0):
+def generate_gallery(path,with_label=False, height=0.0, dir_break=False):
     if height>0:
         sys.stderr.write("Height set to %f cm\n"%height)
         pp=Gallery(label=with_label,height=height)
     else:
         pp = Gallery(label=with_label)
-    pp.generate_tree(path)
+    pp.generate_tree(path, dir_break=dir_break)
 
 
 if __name__ == '__main__':
@@ -171,6 +184,8 @@ if __name__ == '__main__':
             help="build one PDF per folder in path")
     ap.add_argument("-l", "--labels", action="store_true", default=False, 
             help="add labels per picture")
+    ap.add_argument("-d", "--dir-break", action="store_true", default=False, 
+            help="page break at each new directory")
     ap.add_argument("-y", "--height", nargs="?", type=float, default=0.0, 
             help="picture height")
     ap.add_argument("path", nargs="?", default=".",
@@ -181,7 +196,8 @@ if __name__ == '__main__':
     if args.subfolders:
         dirs = next(os.walk(args.path))[1]
         for dd in dirs:
-            generate_gallery(dd, with_label=args.labels, height=args.height)
+            generate_gallery(dd, with_label=args.labels, height=args.height,
+                    dir_break=args.dir_break)
 
     else:
-        generate_gallery(args.path, with_label=args.labels, height=args.height)
+        generate_gallery(args.path, with_label=args.labels, height=args.height, dir_break=args.dir_break)
