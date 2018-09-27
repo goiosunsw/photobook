@@ -146,7 +146,7 @@ class Gallery(object):
         #            self.pdf.t_margin]
         return
 
-    def generate_tree(self, path, extensions=['png','jpg'], dir_break=False):
+    def generate_tree(self, path, extensions=['png','jpg','jpeg'], dir_break=False):
         pdf = self.pdf
         pdf.add_page()
         for root, dirs, files in os.walk(path):
