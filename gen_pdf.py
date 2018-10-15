@@ -75,9 +75,11 @@ class Converter(object):
 
 class Gallery(object):
     def __init__(self, output_file=None, height=None, marg=0.5, dpi=300,
-            label=False):
-        pdf = FPDF('L','cm','A4')
+            with_label=False, orientation='P', paper_size='A4'):
+        # print("paper orientation: "+orientation)
+        pdf = FPDF(orientation,'cm',paper_size)
         self.pdf = pdf
+        print("Paper W x H: {:.1f} x {:.1f}".format(pdf.w,pdf.h))
         self.pdf.set_font("Arial",size=8)
         self.text_h = 0.3
         if not height:
@@ -86,12 +88,12 @@ class Gallery(object):
         self.pos = [1.0,1.0]
         self.max_pos = [pdf.w-pdf.r_margin, pdf.h-pdf.b_margin]
         self.marg = marg
-        if label:
+        if with_label:
             self.marg += self.text_h
         self.output_file = output_file
         self.dpi = dpi
         self.conv = Converter()
-        self.label=label
+        self.label = with_label
         self.n_photos_on_page = 0
 
 
@@ -162,19 +164,26 @@ class Gallery(object):
             if dir_break:
                 self.new_page()
         if not self.output_file:
-            basename = os.path.split(path)[-1]
+            basename = os.path.split(path.strip(os.sep))[-1]
             output_file = basename+'.pdf'
         else:
             output_file = self.output_file
         pdf.output(output_file,'F')
         self.conv.cleanup()
 
-def generate_gallery(path,with_label=False, height=0.0, dir_break=False):
+def generate_gallery(path, height=0.0,**kwargs):
+    try:
+        dir_break = kwargs['dir_break']
+    except KeyError:
+        dir_break = False
+
+    del(kwargs['dir_break'])
+
     if height>0:
         sys.stderr.write("Height set to %f cm\n"%height)
-        pp=Gallery(label=with_label,height=height)
+        pp=Gallery(height=height,**kwargs)
     else:
-        pp = Gallery(label=with_label)
+        pp = Gallery(**kwargs)
     pp.generate_tree(path, dir_break=dir_break)
 
 
@@ -187,17 +196,29 @@ if __name__ == '__main__':
     ap.add_argument("-d", "--dir-break", action="store_true", default=False, 
             help="page break at each new directory")
     ap.add_argument("-y", "--height", nargs="?", type=float, default=0.0, 
-            help="picture height")
+            help="picture height (cm)")
+    ap.add_argument("-L", "--landscape", action="store_true", default=False,
+            help="landscape orientation")
+    ap.add_argument("-S", "--paper-size", nargs="?", default="A4",
+            help="paper size (e.g. A4, letter...)")
     ap.add_argument("path", nargs="?", default=".",
             help="base path to walk into and look for images")
 
     args = ap.parse_args()
 
+    if args.landscape:
+        orientation = "L"
+    else:
+        orientation = "P"
+
     if args.subfolders:
         dirs = next(os.walk(args.path))[1]
         for dd in dirs:
             generate_gallery(dd, with_label=args.labels, height=args.height,
-                    dir_break=args.dir_break)
+                    dir_break=args.dir_break, orientation=orientation,
+                    paper_size=args.paper_size)
 
     else:
-        generate_gallery(args.path, with_label=args.labels, height=args.height, dir_break=args.dir_break)
+        generate_gallery(args.path, with_label=args.labels, height=args.height,
+                    dir_break=args.dir_break, orientation=orientation,
+                    paper_size=args.paper_size)
