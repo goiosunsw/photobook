@@ -128,8 +128,11 @@ class Gallery(object):
         if h is None:
             h = self.height
         if dpi:
-            file=self.converted_file(file,h,dpi=dpi)
-            sys.stderr.write("Temp saved in %s\n"%file)
+            try:
+                file=self.converted_file(file,h,dpi=dpi)
+                sys.stderr.write("Temp saved in %s\n"%file)
+            except OSError:
+                sys.stderr.write("File not converted: %s\n"%file)
         if w is None:
             rat = get_image_aspect_ratio(file)
             w = self.height*rat
@@ -158,7 +161,11 @@ class Gallery(object):
                 if ext in extensions:
                     sys.stderr.write("adding %s\n"%filename)
                     file = os.path.join(root,filename)
-                    self.add_picture_from_file(file,dpi=self.dpi)
+                    try:
+                        self.add_picture_from_file(file,dpi=self.dpi)
+                    except(IOError,OSError):
+                        sys.stderr.write('File error: %s'%file)
+                        continue
                 else:
                     sys.stderr.write("skipping %s\n"%filename)
             if dir_break:
